@@ -1,177 +1,280 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Advanced Text Editor (Glitch-Free)</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Offline Editor — Self-Contained</title>
 <style>
-    body {
-        margin: 0;
-        background: #1e1e1e;
-        color: #d4d4d4;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-    }
-    header {
-        background: #252525;
-        padding: 10px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    input, select, button {
-        background: #2d2d2d;
-        color: #fff;
-        border: none;
-        padding: 6px 10px;
-        border-radius: 4px;
-    }
-    button {
-        background: #2f71b4;
-        cursor: pointer;
-    }
-    button:hover {
-        background: #3a8bc9;
-    }
-    .editor-container {
-        flex: 1;
-        display: flex;
-        overflow: hidden;
-    }
-    .code-wrapper {
-        flex: 1;
-        position: relative;
-        background: #1e1e1e;
-    }
-    /* Textarea sits on top, transparent background, for input */
-    textarea {
-        position: absolute;
-        top: 0; left: 0;
-        width: 100%;
-        height: 100%;
-        background: transparent;
-        color: transparent;
-        caret-color: white;
-        border: none;
-        resize: none;
-        font-family: 'Fira Code', monospace;
-        font-size: 14px;
-        line-height: 1.5;
-        padding: 20px;
-        white-space: pre;
-        overflow: auto;
-        z-index: 2;
-    }
-    /* Highlight layer underneath */
-    pre {
-        margin: 0;
-        pointer-events: none;
-        padding: 20px;
-        font-family: 'Fira Code', monospace;
-        font-size: 14px;
-        line-height: 1.5;
-        white-space: pre-wrap;
-        word-wrap: break-word;
-    }
-    .keyword { color: #569cd6; }
-    .string { color: #ce9178; }
-    .comment { color: #6a9955; }
-    .number { color: #b5cea8; }
-    .html-tag { color: #569cd6; }
-    .css-property { color: #d7ba7d; }
+  :root{
+    --bg:#1e1e1e; --bg2:#252525; --panel:#2b2b2b; --fg:#d4d4d4; --muted:#9aa0a6;
+    --accent:#2f71b4; --accent-hi:#3a8bc9; --ok:#2f9e44;
+    --kw:#569cd6; --str:#ce9178; --com:#6a9955; --num:#b5cea8; --tag:#4fa4ff; --attr:#d7ba7d;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:Segoe UI,system-ui,-apple-system,Arial,sans-serif;display:flex;flex-direction:column}
+  header{background:var(--bg2);padding:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  header input[type="text"],header select{background:#2d2d2d;border:1px solid #333;color:var(--fg);padding:7px 10px;border-radius:6px}
+  header button{background:var(--accent);border:0;color:white;padding:8px 12px;border-radius:6px;cursor:pointer}
+  header button:hover{background:var(--accent-hi)}
+  .wrap{flex:1;display:flex;overflow:hidden}
+  .editor{flex:1;position:relative;background:#1b1b1b;border-top:1px solid #2a2a2a}
+  /* Input layer */
+  textarea{
+    position:absolute; inset:0; width:100%; height:100%;
+    background:transparent; color:transparent; caret-color:#fff;
+    border:0; resize:none; outline:none; padding:18px; font:14px/1.55 "Fira Code",ui-monospace,Consolas,Menlo,monospace;
+    white-space:pre; overflow:auto; tab-size:2;
+  }
+  /* Highlight layer */
+  pre{
+    position:absolute; inset:0; margin:0; padding:18px; pointer-events:none;
+    font:14px/1.55 "Fira Code",ui-monospace,Consolas,Menlo,monospace;
+    color:var(--fg); white-space:pre-wrap; word-break:normal; overflow:auto;
+  }
+  /* Simple tokens */
+  .tok-kw{color:var(--kw)}
+  .tok-str{color:var(--str)}
+  .tok-com{color:var(--com)}
+  .tok-num{color:var(--num)}
+  .tok-tag{color:var(--tag)}
+  .tok-attr{color:var(--attr)}
+  .status{background:var(--bg2);padding:6px 10px;color:var(--muted);font-size:12px;border-top:1px solid #2a2a2a}
 </style>
 </head>
 <body>
-
-<header>
-    <input type="text" id="searchInput" placeholder="Search...">
-    <input type="text" id="replaceInput" placeholder="Replace with...">
-    <button id="replaceBtn">Replace Selected</button>
-    <button id="replaceAllBtn">Replace All</button>
-    <select id="languageSelector">
-        <option value="javascript">JavaScript</option>
-        <option value="html">HTML</option>
-        <option value="css">CSS</option>
+  <header>
+    <select id="lang">
+      <option value="javascript">JavaScript</option>
+      <option value="html">HTML</option>
+      <option value="css">CSS</option>
+      <option value="python">Python</option>
+      <option value="xml">XML</option>
+      <option value="plaintext">Plain Text</option>
     </select>
-</header>
+    <input id="filename" type="text" placeholder="filename" style="min-width:220px" />
+    <button id="importBtn">Import</button>
+    <button id="download">Export</button>
+    <span style="flex-grow:1"></span>
+    <input id="search" type="text" placeholder="Search…" />
+    <input id="replace" type="text" placeholder="Replace with…" />
+    <button id="replaceSel">Replace Selection</button>
+    <button id="replaceAll">Replace All</button>
+  </header>
 
-<div class="editor-container">
-    <div class="code-wrapper">
-        <textarea id="codeInput">// Example code
-function hello() {
-    console.log("Hello, World!");
+  <div class="wrap">
+    <div class="editor">
+      <textarea id="ta" spellcheck="false">// Welcome! Type here.
+// Switch language with the dropdown.
+// Use Import to open a file, or Export to save.
+
+function hello(name){
+  const n = 42;
+  console.log("Hello, " + name + "!");
 }
-hello();</textarea>
-        <pre id="highlightLayer"></pre>
+hello("World");</textarea>
+      <pre id="hl"></pre>
     </div>
-</div>
+  </div>
+  <div class="status" id="status">Ready.</div>
+  <input type="file" id="fileInput" style="display:none;" />
 
 <script>
-const textarea = document.getElementById("codeInput");
-const highlightLayer = document.getElementById("highlightLayer");
-const langSelect = document.getElementById("languageSelector");
-const searchInput = document.getElementById("searchInput");
-const replaceInput = document.getElementById("replaceInput");
-const replaceBtn = document.getElementById("replaceBtn");
-const replaceAllBtn = document.getElementById("replaceAllBtn");
+/* ---------- Tiny, offline highlighter (no external libs) ---------- */
+/* Escaping */
+const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 
-function highlight(code, lang) {
-    code = code
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-
-    if (lang === "javascript") {
-        code = code
-            .replace(/(\/\/.*)/g, '<span class="comment">$1</span>')
-            .replace(/(".*?"|'.*?')/g, '<span class="string">$1</span>')
-            .replace(/\b(function|return|const|let|var|console|log)\b/g, '<span class="keyword">$1</span>')
-            .replace(/\b(\d+)\b/g, '<span class="number">$1</span>');
-    } 
-    else if (lang === "html") {
-        code = code
-            .replace(/(&lt;\/?\w+.*?&gt;)/g, '<span class="html-tag">$1</span>');
-    } 
-    else if (lang === "css") {
-        code = code
-            .replace(/(\.\w+)/g, '<span class="css-property">$1</span>')
-            .replace(/(#[\w-]+)/g, '<span class="css-property">$1</span>');
-    }
-
-    return code;
+/* Regex-based tokenizers (fast + small, not full parsers) */
+function highlightJS(src){
+  let s = esc(src);
+  s = s
+    .replace(/(\/\*[\s\S]*?\*\/|\/\/.*?$)/gm,'<span class="tok-com">$1</span>')
+    .replace(/(["'`])(?:\\.|(?!\1)[\s\S])*?\1/g,'<span class="tok-str">$&</span>')
+    .replace(/\b(?:function|return|const|let|var|if|else|for|while|class|extends|new|try|catch|finally|throw|switch|case|break|continue|import|from|export|default|await|async|yield|this|super|typeof|in|instanceof|delete|void)\b/g,'<span class="tok-kw">$&</span>')
+    .replace(/\b\d(?:_?\d)*(\.\d(?:_?\d)*)?(?:[eE][+-]?\d+)?\b/g,'<span class="tok-num">$&</span>');
+  return s;
+}
+function highlightCSS(src){
+  let s = esc(src);
+  s = s
+    .replace(/\/\*[\s\S]*?\*\//g,'<span class="tok-com">$&</span>')
+    .replace(/(["'])(?:\\.|(?!\1).)*\1/g,'<span class="tok-str">$&</span>')
+    .replace(/([a-z-]+)\s*:/gi,'<span class="tok-attr">$1</span>:')
+    .replace(/\b\d+(?:\.\d+)?(px|em|rem|%|vh|vw)?\b/g,'<span class="tok-num">$&</span>');
+  return s;
+}
+function highlightHTML(src){
+  let s = esc(src);
+  s = s
+    .replace(/(&lt;!--[\s\S]*?--&gt;)/g,'<span class="tok-com">$1</span>')
+    .replace(/(&lt;\/?\s*)([a-zA-Z][\w:-]*)([^&]*?&gt;)/g,(m,p1,tag,p3)=>`${p1}<span class="tok-tag">${tag}</span>${p3}`)
+    .replace(/([a-zA-Z:-]+)(=)("[^"]*"|'[^']*')/g,'<span class="tok-attr">$1</span>$2<span class="tok-str">$3</span>');
+  return s;
+}
+function highlightXML(src){
+  // XML ~= HTML without void tag quirks
+  return highlightHTML(src);
+}
+function highlightPY(src){
+  let s = esc(src);
+  s = s
+    .replace(/(#.*?$)/gm,'<span class="tok-com">$1</span>')
+    .replace(/("""[\s\S]*?"""|'''[\s\S]*?'''|"(?:\\.|[^"\n])*"|'(?:\\.|[^'\n])*')/g,'<span class="tok-str">$1</span>')
+    .replace(/\b(?:def|return|class|import|from|as|if|elif|else|for|while|try|except|finally|raise|with|lambda|pass|break|continue|yield|global|nonlocal|assert|in|is|not|and|or|True|False|None)\b/g,'<span class="tok-kw">$&</span>')
+    .replace(/\b\d+(?:\.\d+)?\b/g,'<span class="tok-num">$&</span>');
+  return s;
 }
 
-function updateHighlight() {
-    const code = textarea.value;
-    highlightLayer.innerHTML = highlight(code, langSelect.value);
+const highlighters = {
+  javascript: highlightJS,
+  html:       highlightHTML,
+  css:        highlightCSS,
+  python:     highlightPY,
+  xml:        highlightXML,
+  // "plaintext" is intentionally omitted to use the fallback
+};
+
+/* ---------- Editor wiring (textarea + overlay) ---------- */
+const ta       = document.getElementById('ta');
+const pre      = document.getElementById('hl');
+const langSel  = document.getElementById('lang');
+const status   = document.getElementById('status');
+const filename = document.getElementById('filename');
+
+function extFor(lang){
+  return {javascript:'.js', html:'.html', css:'.css', python:'.py', xml:'.xml', plaintext:'.txt'}[lang] || '.txt';
 }
 
-textarea.addEventListener("input", updateHighlight);
-langSelect.addEventListener("change", updateHighlight);
+function ensureFilenameExt(){
+  const lang = langSel.value;
+  // If in plaintext mode, don't force an extension.
+  if (lang === 'plaintext') {
+    if (!filename.value.trim()) filename.value = 'text.txt';
+    return;
+  }
 
-// Replace selected text
-replaceBtn.addEventListener("click", () => {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = textarea.value;
-    textarea.value = text.slice(0, start) + replaceInput.value + text.slice(end);
-    updateHighlight();
+  let name = filename.value.trim();
+  const want = extFor(lang);
+  if(!name){ filename.value = 'code' + want; return; }
+  
+  // Check if it already has the correct extension
+  if (name.toLowerCase().endsWith(want)) return;
+
+  // Replace other known extensions or append the new one
+  const knownExtsRegex = /\.(js|html|css|py|xml|txt)$/i;
+  if (knownExtsRegex.test(name)) {
+    filename.value = name.replace(knownExtsRegex, want);
+  } else {
+    filename.value = name + want;
+  }
+}
+
+function render(){
+  const lang = langSel.value;
+  const src  = ta.value;
+  const fn   = highlighters[lang] || (s=>esc(s));
+  pre.innerHTML = fn(src) + (src.endsWith('\n') ? '' : '\n'); // keep last line height
+  const langDisplay = lang === 'plaintext' ? 'Plain Text' : lang.toUpperCase();
+  status.textContent = `Language: ${langDisplay} — ${src.length} chars`;
+}
+
+function syncScroll(){
+  pre.scrollTop  = ta.scrollTop;
+  pre.scrollLeft = ta.scrollLeft;
+}
+
+function updateSpellcheckState() {
+  const isPlainText = langSel.value === 'plaintext';
+  ta.spellcheck = isPlainText;
+}
+
+ta.addEventListener('input', render);
+ta.addEventListener('scroll', syncScroll);
+langSel.addEventListener('change', ()=>{
+  ensureFilenameExt();
+  render();
+  updateSpellcheckState();
+});
+filename.addEventListener('blur', ensureFilenameExt); // Also check when user leaves the input
+window.addEventListener('resize', syncScroll);
+
+// Initial state
+render();
+ensureFilenameExt();
+updateSpellcheckState();
+
+/* ---------- Search / Replace ---------- */
+const q = document.getElementById('search');
+const r = document.getElementById('replace');
+document.getElementById('replaceSel').addEventListener('click', ()=>{
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  const val = ta.value;
+  ta.value = val.slice(0,start) + (r.value ?? '') + val.slice(end);
+  ta.selectionStart = ta.selectionEnd = start + (r.value ?? '').length;
+  ta.focus();
+  render();
+});
+document.getElementById('replaceAll').addEventListener('click', ()=>{
+  if(!q.value) return;
+  const safe = q.value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const re = new RegExp(safe,'g');
+  ta.value = ta.value.replace(re, r.value ?? '');
+  render();
 });
 
-// Replace all occurrences
-replaceAllBtn.addEventListener("click", () => {
-    const searchTerm = searchInput.value;
-    if (!searchTerm) return;
-    const regex = new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
-    textarea.value = textarea.value.replace(regex, replaceInput.value);
-    updateHighlight();
+/* ---------- Import / Export ---------- */
+const importBtn = document.getElementById('importBtn');
+const fileInput = document.getElementById('fileInput');
+
+importBtn.addEventListener('click', () => {
+  fileInput.click(); // Trigger the hidden file input
 });
 
-// Initialize
-updateHighlight();
+fileInput.addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    // Set the textarea content
+    ta.value = e.target.result;
+
+    // Auto-detect language from file extension
+    const ext = file.name.split('.').pop().toLowerCase();
+    const langMap = {
+        js: 'javascript', html: 'html', htm: 'html', css: 'css',
+        py: 'python', xml: 'xml', txt: 'plaintext'
+    };
+    langSel.value = langMap[ext] || 'plaintext'; // Default to plaintext
+
+    // Update filename input
+    filename.value = file.name;
+    
+    // Re-render the editor with new content and language
+    render();
+    syncScroll();
+    updateSpellcheckState(); // Update spellcheck based on new language
+  };
+  reader.onerror = () => {
+    status.textContent = "Error reading file.";
+  }
+  reader.readAsText(file);
+
+  // Reset file input to allow opening the same file again
+  fileInput.value = '';
+});
+
+document.getElementById('download').addEventListener('click', ()=>{
+  ensureFilenameExt();
+  const name = filename.value.trim() || ('code' + extFor(langSel.value));
+  const blob = new Blob([ta.value], {type: 'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+});
 </script>
-
 </body>
 </html>
